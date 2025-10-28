@@ -8,6 +8,7 @@ import jakarta.websocket.ContainerProvider
 import jakarta.websocket.OnMessage
 import jakarta.websocket.Session
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
@@ -15,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDO
 import org.springframework.boot.test.web.server.LocalServerPort
 import java.net.URI
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 private val logger = KotlinLogging.logger {}
 
@@ -36,7 +38,6 @@ class ElizaServerTest {
         assertEquals("The doctor is in.", list[0])
     }
 
-    @Disabled // Remove this line when you implement onChat
     @Test
     fun onChat() {
         logger.info { "Test thread" }
@@ -45,8 +46,13 @@ class ElizaServerTest {
 
         val client = ComplexClient(list, latch)
         client.connect("ws://localhost:$port/eliza")
+        
         latch.await()
+
         val size = list.size
+        assertTrue(size >= 4)
+        assertEquals("We were discussing you, not me.", list[3])
+
         // 1. EXPLAIN WHY size = list.size IS NECESSARY
         // 2. REPLACE BY assertXXX expression that checks an interval; assertEquals must not be used;
         // 3. EXPLAIN WHY assertEquals CANNOT BE USED AND WHY WE SHOULD CHECK THE INTERVAL
@@ -73,7 +79,6 @@ class ComplexClient(
     private val latch: CountDownLatch,
 ) {
     @OnMessage
-    @Suppress("UNUSED_PARAMETER") // Remove this line when you implement onMessage
     fun onMessage(
         message: String,
         session: Session,
@@ -81,6 +86,9 @@ class ComplexClient(
         logger.info { "Client received: $message" }
         list.add(message)
         latch.countDown()
+        if(list.size == 3) {
+            session.basicRemote.sendText("you")
+        }
         // 5. COMPLETE if (expression) {
         // 6. COMPLETE   sentence
         // }
